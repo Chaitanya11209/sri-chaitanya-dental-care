@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase';
 import { isAdmin, isLoggedIn } from '../../lib/auth';
 import { Search, FileText, Download, Plus, X, Printer, ShieldX } from 'lucide-react';
 
+const TREATMENTS = ['Dental Implants', 'Root Canal', 'Teeth Whitening', 'Braces & Aligners', 'Scaling & Polishing', 'Tooth Extraction', 'Fillings', 'Crowns & Bridges', 'Pediatric Dentistry', 'Emergency Care', 'Consultation', 'Other'];
+
 export default function Billing() {
   const [, setLocation] = useLocation();
   const admin = isAdmin();
@@ -184,6 +186,183 @@ export default function Billing() {
     }
   };
 
+  const printBill = (a: any) => {
+    const invoiceNo = `INV-${a.id}-${Date.now().toString().slice(-6)}`;
+    const total = Number(a.amount_paid || 0) + Number(a.balance_amount || 0);
+
+    // Create a print-friendly HTML invoice
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice - ${a.name || 'Patient'}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #000;
+            background: #fff;
+            padding: 20px;
+            max-width: 210mm;
+            margin: 0 auto;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+          }
+          .clinic-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+          .clinic-tagline {
+            font-size: 10px;
+            color: #555;
+          }
+          .invoice-title {
+            font-size: 20px;
+            font-weight: bold;
+          }
+          .meta {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 20px;
+          }
+          .meta-section h3 {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .meta-section p {
+            font-size: 11px;
+            margin-bottom: 4px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+          }
+          th, td {
+            border: 1px solid #000;
+            padding: 10px 12px;
+            text-align: left;
+          }
+          th {
+            background: #f5f5f5;
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+          }
+          td {
+            font-size: 11px;
+          }
+          .amount-cell {
+            text-align: right;
+          }
+          .total-row td {
+            font-weight: bold;
+            background: #f9f9f9;
+          }
+          .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #555;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+          }
+          .footer p {
+            margin-bottom: 3px;
+          }
+          @media print {
+            body { padding: 0; }
+            @page {
+              size: A4;
+              margin: 15mm;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="clinic-name">Sri Chaitanya Dental Care</div>
+            <div class="clinic-tagline">Multispeciality Dental Clinic | Ph: +91 8317575165</div>
+          </div>
+          <div class="invoice-title">INVOICE</div>
+        </div>
+
+        <div class="meta">
+          <div class="meta-section">
+            <h3>Patient Details</h3>
+            <p><strong>Name:</strong> ${a.name || '-'}</p>
+            <p><strong>Phone:</strong> ${a.phone || '-'}</p>
+            ${a.email ? `<p><strong>Email:</strong> ${a.email}</p>` : ''}
+            ${a.location ? `<p><strong>Area:</strong> ${a.location}</p>` : ''}
+          </div>
+          <div class="meta-section">
+            <h3>Invoice Details</h3>
+            <p><strong>Invoice No:</strong> ${invoiceNo}</p>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-IN')}</p>
+            <p><strong>Appointment:</strong> ${a.next_visit || '-'}${a.appointment_time ? ` at ${a.appointment_time}` : ''}</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Treatment / Service</th>
+              <th>Notes</th>
+              <th style="width: 120px;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${a.treatment || 'Dental Service'}</td>
+              <td>${a.notes || '-'}</td>
+              <td class="amount-cell">₹${total.toLocaleString('en-IN')}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="2"><strong>Amount Paid</strong></td>
+              <td class="amount-cell">₹${Number(a.amount_paid || 0).toLocaleString('en-IN')}</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="2"><strong>Balance Due</strong></td>
+              <td class="amount-cell">₹${Number(a.balance_amount || 0).toLocaleString('en-IN')}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="footer">
+          <p><strong>Thank you for choosing Sri Chaitanya Dental Care!</strong></p>
+          <p>For queries, please call: +91 8317575165</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Open new window and print
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
+  };
+
   const filtered = appointments.filter(a => {
     const s = search.toLowerCase();
     return !search || a.name?.toLowerCase().includes(s) || a.phone?.includes(s) || a.treatment?.toLowerCase().includes(s);
@@ -256,6 +435,9 @@ export default function Billing() {
                             <button onClick={() => generatePDF(a)} className="text-xs text-blue-600 hover:underline font-medium flex items-center gap-1">
                               <Download size={12} />PDF
                             </button>
+                            <button onClick={() => printBill(a)} className="text-xs text-slate-600 hover:underline font-medium flex items-center gap-1">
+                              <Printer size={12} />Print
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -273,9 +455,14 @@ export default function Billing() {
                       <p className="font-semibold text-slate-800 text-sm">{a.name}</p>
                       <p className="text-xs text-slate-400">{a.treatment} · {a.next_visit}</p>
                     </div>
-                    <button onClick={() => generatePDF(a)} className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                      <Download size={14} />
-                    </button>
+                    <div className="flex gap-1">
+                      <button onClick={() => generatePDF(a)} className="p-2 bg-blue-50 text-blue-600 rounded-xl" title="Download PDF">
+                        <Download size={14} />
+                      </button>
+                      <button onClick={() => printBill(a)} className="p-2 bg-slate-50 text-slate-600 rounded-xl" title="Print">
+                        <Printer size={14} />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex gap-4 text-sm">
                     <span className="text-emerald-600">Paid: ₹{a.amount_paid || 0}</span>

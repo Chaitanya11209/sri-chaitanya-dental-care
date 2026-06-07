@@ -11,6 +11,7 @@ import Treatments from "./pages/crm/Treatments";
 import Billing from "./pages/crm/Billing";
 import Collections from "./pages/crm/Collections";
 import Followups from "./pages/crm/Followups";
+import Users from "./pages/crm/Users";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ function CRMRoutes() {
         <Route path="/crm/billing" component={Billing} />
         <Route path="/crm/collections" component={Collections} />
         <Route path="/crm/followups" component={Followups} />
+        <Route path="/crm/users" component={Users} />
         <Route>
           <Redirect to="/crm/dashboard" />
         </Route>

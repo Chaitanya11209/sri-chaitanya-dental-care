@@ -3,7 +3,7 @@ import { useLocation, Link } from 'wouter';
 import {
   LayoutDashboard, Users, CalendarPlus, Stethoscope,
   FileText, DollarSign, Bell, LogOut, Menu,
-  ChevronRight, Building2, Shield, UserCircle
+  ChevronRight, Building2, Shield, UserCircle, UserCog
 } from 'lucide-react';
 import { logout, getCurrentUser, isAdmin, isLoggedIn, validateSession } from '../../lib/auth';
 
@@ -58,6 +58,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
     { path: '/crm/billing',      label: 'Billing',      icon: FileText,        adminOnly: true  },
     { path: '/crm/collections',  label: 'Collections',  icon: DollarSign,      adminOnly: true  },
     { path: '/crm/followups',    label: 'Follow-ups',   icon: Bell,            adminOnly: false },
+    { path: '/crm/users',        label: 'Users',        icon: UserCog,         adminOnly: true  },
   ];
 
   const navItems = allNavItems.filter(item => !item.adminOnly || admin);
