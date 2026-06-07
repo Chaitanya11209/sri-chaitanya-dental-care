@@ -1,0 +1,298 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Search, FileText, Download, Plus, X, Printer } from 'lucide-react';
+
+export default function Billing() {
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<any>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [showEdit, setShowEdit] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ amount_paid: '', balance_amount: '', payment_mode: 'Cash', payment_notes: '' });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { fetch(); }, []);
+
+  const fetch = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('appointments').select('*').neq('status', 'Deleted').order('created_at', { ascending: false });
+    setAppointments(data || []);
+    setLoading(false);
+  };
+
+  const openEdit = (a: any) => {
+    setShowEdit(a);
+    setEditForm({ amount_paid: a.amount_paid || '', balance_amount: a.balance_amount || '', payment_mode: a.payment_mode || 'Cash', payment_notes: a.payment_notes || '' });
+  };
+
+  const savePayment = async (e: React.FormEvent) => {
+    e.preventDefault(); setSaving(true);
+    await supabase.from('appointments').update(editForm).eq('id', showEdit.id);
+    setShowEdit(null); fetch(); setSaving(false);
+  };
+
+  const generatePDF = async (a: any) => {
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+      const doc = new jsPDF();
+      const invoiceNo = `INV-${a.id}-${Date.now().toString().slice(-6)}`;
+
+      // ── Header (black & white) ──────────────────────────────────────────
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Sri Chaitanya Dental Care', 15, 18);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Multispeciality Dental Clinic  |  Ph: +91 8317575165', 15, 25);
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INVOICE', 195, 18, { align: 'right' });
+
+      // Divider
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.6);
+      doc.line(15, 30, 195, 30);
+
+      // ── Invoice meta ────────────────────────────────────────────────────
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Invoice No: ${invoiceNo}`, 15, 38);
+      doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 15, 45);
+
+      // ── Patient + Appointment ───────────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Patient Details', 15, 57);
+      doc.text('Appointment Details', 115, 57);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const patientLines = [
+        `Name   : ${a.name ?? '-'}`,
+        `Phone  : ${a.phone ?? '-'}`,
+        ...(a.email   ? [`Email  : ${a.email}`]       : []),
+        ...(a.location? [`Area   : ${a.location}`]    : []),
+      ];
+      patientLines.forEach((l, i) => doc.text(l, 15, 64 + i * 7));
+
+      const apptLines = [
+        `Date   : ${a.next_visit ?? '-'}`,
+        `Time   : ${a.appointment_time ?? '-'}`,
+        `Type   : ${a.visit_type ?? 'New'}`,
+      ];
+      apptLines.forEach((l, i) => doc.text(l, 115, 64 + i * 7));
+
+      // ── Treatment table ─────────────────────────────────────────────────
+      const tableTop = 64 + Math.max(patientLines.length, apptLines.length) * 7 + 8;
+
+      autoTable(doc, {
+        startY: tableTop,
+        head: [['Treatment / Service', 'Notes', 'Total Amount']],
+        body: [
+          [
+            a.treatment ?? 'Dental Service',
+            a.notes ?? '-',
+            `Rs. ${Number(a.amount_paid || 0) + Number(a.balance_amount || 0)}`,
+          ],
+        ],
+        foot: [
+          ['', 'Amount Paid',  `Rs. ${a.amount_paid  ?? 0}`],
+          ['', 'Balance Due',  `Rs. ${a.balance_amount ?? 0}`],
+        ],
+        headStyles: {
+          fillColor:  [255, 255, 255],
+          textColor:  [0, 0, 0],
+          fontStyle:  'bold',
+          lineWidth:  0.3,
+          lineColor:  [0, 0, 0],
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          lineWidth: 0.2,
+          lineColor: [100, 100, 100],
+        },
+        footStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          lineWidth: 0.3,
+          lineColor: [0, 0, 0],
+        },
+        alternateRowStyles: { fillColor: [255, 255, 255] },
+        theme: 'grid',
+        columnStyles: { 2: { halign: 'right' } },
+      });
+
+      // ── Footer note ─────────────────────────────────────────────────────
+      const endY = (doc as any).lastAutoTable.finalY + 14;
+      doc.setLineWidth(0.3);
+      doc.line(15, endY - 4, 195, endY - 4);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(60, 60, 60);
+      doc.text('Thank you for choosing Sri Chaitanya Dental Care!', 105, endY + 2, { align: 'center' });
+      doc.text('For queries call: +91 8317575165', 105, endY + 8, { align: 'center' });
+
+      doc.save(`Invoice-${a.name?.replace(/\s+/g, '_')}-${invoiceNo}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      alert('PDF generation failed. Please try again.');
+    }
+  };
+
+  const filtered = appointments.filter(a => {
+    const s = search.toLowerCase();
+    return !search || a.name?.toLowerCase().includes(s) || a.phone?.includes(s) || a.treatment?.toLowerCase().includes(s);
+  });
+
+  const totalCollected = appointments.reduce((t, a) => t + Number(a.amount_paid || 0), 0);
+  const totalPending = appointments.reduce((t, a) => t + Number(a.balance_amount || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-sm">
+          <p className="text-xs text-slate-500 mb-1">Total Collected</p>
+          <p className="text-2xl font-black text-emerald-600">₹{totalCollected.toLocaleString('en-IN')}</p>
+        </div>
+        <div className="bg-white rounded-2xl p-4 border border-red-100 shadow-sm">
+          <p className="text-xs text-slate-500 mb-1">Total Pending</p>
+          <p className="text-2xl font-black text-red-500">₹{totalPending.toLocaleString('en-IN')}</p>
+        </div>
+        <div className="bg-white rounded-2xl p-4 border border-blue-100 shadow-sm">
+          <p className="text-xs text-slate-500 mb-1">Total Revenue</p>
+          <p className="text-2xl font-black text-blue-600">₹{(totalCollected + totalPending).toLocaleString('en-IN')}</p>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search patient or treatment…"
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-400" />
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="py-16 text-center"><div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" /></div>
+        ) : (
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    {['Patient', 'Treatment', 'Date', 'Total', 'Paid', 'Balance', 'Actions'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {filtered.map(a => {
+                    const total = Number(a.amount_paid || 0) + Number(a.balance_amount || 0);
+                    return (
+                      <tr key={a.id} className="hover:bg-slate-50 transition">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-slate-800 text-sm">{a.name}</p>
+                          <p className="text-xs text-slate-400">{a.phone}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{a.treatment}</td>
+                        <td className="px-4 py-3 text-xs text-slate-500">{a.next_visit}</td>
+                        <td className="px-4 py-3 text-sm text-slate-700 font-medium">₹{total.toLocaleString('en-IN')}</td>
+                        <td className="px-4 py-3 text-sm text-emerald-600 font-medium">₹{Number(a.amount_paid || 0).toLocaleString('en-IN')}</td>
+                        <td className="px-4 py-3">
+                          <span className={`text-sm font-medium ${Number(a.balance_amount || 0) > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                            ₹{Number(a.balance_amount || 0).toLocaleString('en-IN')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => openEdit(a)} className="text-xs text-teal-600 hover:underline font-medium">Edit</button>
+                            <button onClick={() => generatePDF(a)} className="text-xs text-blue-600 hover:underline font-medium flex items-center gap-1">
+                              <Download size={12} />PDF
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {/* Mobile */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {filtered.map(a => (
+                <div key={a.id} className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-semibold text-slate-800 text-sm">{a.name}</p>
+                      <p className="text-xs text-slate-400">{a.treatment} · {a.next_visit}</p>
+                    </div>
+                    <button onClick={() => generatePDF(a)} className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                      <Download size={14} />
+                    </button>
+                  </div>
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-emerald-600">Paid: ₹{a.amount_paid || 0}</span>
+                    <span className="text-red-500">Due: ₹{a.balance_amount || 0}</span>
+                  </div>
+                  <button onClick={() => openEdit(a)} className="mt-2 text-xs text-teal-600 underline">Update Payment</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Edit payment modal */}
+      {showEdit && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm">
+            <div className="px-5 py-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800">Update Payment</h3>
+              <button onClick={() => setShowEdit(null)} className="p-1.5 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
+            </div>
+            <form onSubmit={savePayment} className="p-5 space-y-3">
+              <p className="text-sm text-slate-600 font-medium">{showEdit.name} — {showEdit.treatment}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Amount Paid (₹)</label>
+                  <input type="number" value={editForm.amount_paid} onChange={e => setEditForm(f => ({ ...f, amount_paid: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Balance (₹)</label>
+                  <input type="number" value={editForm.balance_amount} onChange={e => setEditForm(f => ({ ...f, balance_amount: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Payment Mode</label>
+                <select value={editForm.payment_mode} onChange={e => setEditForm(f => ({ ...f, payment_mode: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                  {['Cash', 'UPI', 'Card', 'Net Banking', 'EMI', 'Other'].map(m => <option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Notes</label>
+                <input value={editForm.payment_notes} onChange={e => setEditForm(f => ({ ...f, payment_notes: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+              </div>
+              <button type="submit" disabled={saving}
+                className="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm transition disabled:opacity-60">
+                {saving ? 'Saving…' : 'Save Payment'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
