@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { isAdmin } from '../../lib/auth';
 import { Bell, AlertCircle, Clock, Calendar, MessageCircle, CheckCircle } from 'lucide-react';
 
 type Tab = 'overdue' | 'today' | 'tomorrow' | 'upcoming';
 
 export default function Followups() {
+  const admin = isAdmin();
   const [tab, setTab] = useState<Tab>('today');
   const [data, setData] = useState<Record<Tab, any[]>>({ overdue: [], today: [], tomorrow: [], upcoming: [] });
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,7 @@ export default function Followups() {
                   <span className="text-slate-400">Scheduled:</span> {a.next_visit}
                   {a.appointment_time && ` at ${a.appointment_time}`}
                 </p>
-                {Number(a.balance_amount || 0) > 0 && (
+                {admin && Number(a.balance_amount || 0) > 0 && (
                   <p className="text-xs text-red-500"><span className="text-slate-400">Balance:</span> ₹{Number(a.balance_amount).toLocaleString('en-IN')}</p>
                 )}
               </div>

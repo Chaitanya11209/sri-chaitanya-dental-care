@@ -373,9 +373,11 @@ export default function CRMDashboard() {
             { label: 'Add Patient', icon: Plus, href: '/crm/patients', color: 'bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-100' },
             { label: 'New Appointment', icon: CalendarPlus, href: '/crm/appointments', color: 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100' },
             { label: 'New Treatment', icon: Stethoscope, href: '/crm/treatments', color: 'bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100' },
-            { label: 'Generate Bill', icon: FileText, href: '/crm/billing', color: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100' },
             { label: 'Search Patient', icon: Search, href: '/crm/patients', color: 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' },
-            ...(admin ? [{ label: 'Collections', icon: DollarSign, href: '/crm/collections', color: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100' }] : []),
+            ...(admin ? [
+              { label: 'Generate Bill', icon: FileText, href: '/crm/billing', color: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100' },
+              { label: 'Collections', icon: DollarSign, href: '/crm/collections', color: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100' },
+            ] : []),
           ].map(({ label, icon: Icon, href, color }) => (
             <Link key={label} href={href}>
               <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold cursor-pointer transition-all ${color}`}>

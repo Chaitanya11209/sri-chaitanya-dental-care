@@ -55,7 +55,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
     { path: '/crm/patients',     label: 'Patients',     icon: Users,           adminOnly: false },
     { path: '/crm/appointments', label: 'Appointments', icon: CalendarPlus,    adminOnly: false },
     { path: '/crm/treatments',   label: 'Treatments',   icon: Stethoscope,     adminOnly: false },
-    { path: '/crm/billing',      label: 'Billing',      icon: FileText,        adminOnly: false },
+    { path: '/crm/billing',      label: 'Billing',      icon: FileText,        adminOnly: true  },
     { path: '/crm/collections',  label: 'Collections',  icon: DollarSign,      adminOnly: true  },
     { path: '/crm/followups',    label: 'Follow-ups',   icon: Bell,            adminOnly: false },
   ];

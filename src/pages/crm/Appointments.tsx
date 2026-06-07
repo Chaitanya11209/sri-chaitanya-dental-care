@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { isAdmin } from '../../lib/auth';
 import { Plus, Search, X, Phone, Clock, Calendar } from 'lucide-react';
 
 const STATUS_OPTIONS = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
 const TREATMENTS = ['Dental Implants', 'Root Canal', 'Teeth Whitening', 'Braces & Aligners', 'Scaling & Polishing', 'Tooth Extraction', 'Fillings', 'Crowns & Bridges', 'Pediatric Dentistry', 'Emergency Care', 'Consultation', 'Other'];
 
 export default function Appointments() {
+  const admin = isAdmin();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -100,7 +102,14 @@ export default function Appointments() {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>
-                    {['Patient', 'Treatment', 'Date & Time', 'Status', 'Amount', 'Balance', 'Actions'].map(h => (
+                    {[
+                      'Patient',
+                      'Treatment',
+                      'Date & Time',
+                      'Status',
+                      ...(admin ? ['Amount', 'Balance'] : []),
+                      'Actions'
+                    ].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -123,8 +132,12 @@ export default function Appointments() {
                           {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
                         </select>
                       </td>
-                      <td className="px-4 py-3 text-sm text-emerald-600 font-medium">₹{a.amount_paid || 0}</td>
-                      <td className="px-4 py-3 text-sm text-red-500 font-medium">₹{a.balance_amount || 0}</td>
+                      {admin && (
+                        <>
+                          <td className="px-4 py-3 text-sm text-emerald-600 font-medium">₹{a.amount_paid || 0}</td>
+                          <td className="px-4 py-3 text-sm text-red-500 font-medium">₹{a.balance_amount || 0}</td>
+                        </>
+                      )}
                       <td className="px-4 py-3">
                         <a href={`https://wa.me/91${a.phone}?text=Hi ${a.name}, your appointment for ${a.treatment} is on ${a.next_visit} at ${a.appointment_time}. Thank you! - Sri Chaitanya Dental Care`}
                           target="_blank" rel="noreferrer"
@@ -150,10 +163,12 @@ export default function Appointments() {
                     </select>
                   </div>
                   <p className="text-xs text-slate-600">{a.treatment} · {a.next_visit} {a.appointment_time}</p>
-                  <div className="flex gap-4 mt-1 text-xs">
-                    <span className="text-emerald-600">Paid: ₹{a.amount_paid || 0}</span>
-                    <span className="text-red-500">Balance: ₹{a.balance_amount || 0}</span>
-                  </div>
+                  {admin && (
+                    <div className="flex gap-4 mt-1 text-xs">
+                      <span className="text-emerald-600">Paid: ₹{a.amount_paid || 0}</span>
+                      <span className="text-red-500">Balance: ₹{a.balance_amount || 0}</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

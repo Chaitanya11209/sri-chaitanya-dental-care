@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
 import { supabase } from '../../lib/supabase';
-import { Search, FileText, Download, Plus, X, Printer } from 'lucide-react';
+import { isAdmin, isLoggedIn } from '../../lib/auth';
+import { Search, FileText, Download, Plus, X, Printer, ShieldX } from 'lucide-react';
 
 export default function Billing() {
+  const [, setLocation] = useLocation();
+  const admin = isAdmin();
+
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      setLocation('/admin');
+      return;
+    }
+    if (!admin) {
+      setLocation('/crm/dashboard');
+    }
+  }, [admin, setLocation]);
+
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -11,6 +26,29 @@ export default function Billing() {
   const [showEdit, setShowEdit] = useState<any>(null);
   const [editForm, setEditForm] = useState({ amount_paid: '', balance_amount: '', payment_mode: 'Cash', payment_notes: '' });
   const [saving, setSaving] = useState(false);
+
+  // Staff blocked view
+  if (!admin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
+          <ShieldX size={32} className="text-red-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-slate-700">Access Restricted</h2>
+          <p className="text-slate-400 text-sm mt-1 max-w-sm">
+            Billing and invoice generation are only accessible to Admin users. Contact your administrator for access.
+          </p>
+        </div>
+        <button
+          onClick={() => setLocation('/crm/dashboard')}
+          className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   useEffect(() => { fetch(); }, []);
 
